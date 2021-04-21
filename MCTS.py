@@ -29,7 +29,7 @@ def MCTS_Move(board, combinations, values, playerCombinations, playerValues, cur
 
     #Run simulations according to the number of simulations required
     for i in range(g.numberOfSimulations):
-        #print(f"Simulation #{i}!")
+        print(f"Simulation #{i}!")
         #Copy simulated values
         func.copy2DList(board, simBoard)
         func.copy2DValue(values, simValues)
@@ -39,7 +39,7 @@ def MCTS_Move(board, combinations, values, playerCombinations, playerValues, cur
         func.copyCombination(combinations, simCombinations)
         func.copyCombination(playerCombinations, simPlayerCombinations)
         simCurPlayer.value = curPlayer
-        simUntaken = trial.getBestMovesInAnArrayFast(simBoard, simValues, simPlayerValues, simCombinations, simPlayerCombinations)
+        simUntaken = trial.getBestMovesInAnArrayFast(simBoard, simValues, simPlayerValues, simCombinations, simPlayerCombinations, simCurPlayer.value)
         #Selection and Expansion of Node Tree
         start = SelectAndExpand(head, simUntaken, simBoard, simValues, simPlayerValues, simCombinations, simPlayerCombinations, simCurPlayer)
         #Simulate Game is Simulation
@@ -101,9 +101,9 @@ def simulateGame(simBoard, combinations, playerCombinations, values, playerValue
     #**than a Coordinate Pair itself, but it does look ugly
         curPlayer.value = not curPlayer.value
         if (curPlayer.value):
-            simUntaken = trial.getBestMovesInAnArrayFast(simBoard, playerValues, values, playerCombinations, combinations)
+            simUntaken = trial.getBestMovesInAnArrayFast(simBoard, playerValues, values, playerCombinations, combinations, curPlayer.value)
         else:
-            simUntaken = trial.getBestMovesInAnArrayFast(simBoard, values, playerValues, combinations, playerCombinations)
+            simUntaken = trial.getBestMovesInAnArrayFast(simBoard, values, playerValues, combinations, playerCombinations, curPlayer.value)
 
     #Get another random untaken space
         if (len(simUntaken) > 0):

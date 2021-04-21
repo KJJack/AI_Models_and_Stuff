@@ -16,6 +16,7 @@ from keras.utils.np_utils import to_categorical
 import pandas as pd
 import numpy as np
 import csv
+from timer import Timer
 
 #Creates board, all empty spots wiht zeros
 def initBoard():
@@ -170,15 +171,18 @@ def simulateGame(p1=None, p2=None, rnd=0):
 
     while getWinner(board) == -1:
         move = None
+        #bot1_Roll = rd.randint(1, 7)
+        #bot2_Roll = rd.randint(1, 19)
+
         # Chosen move for player1
         if playertoMove == 1 and rand == False:
             moveList = trial.getBestMovesInAnArray(board)
             move = rd.choice(moveList)
-        elif playertoMove == 1 and rand == True:
-            move = trial.getBestMove(board)
-        elif playertoMove == 2 and rand == True:
+        
+        elif playertoMove == 2: #and rand == True:
             # import pdb; pdb.set_trace() n = nextline s = step in c = continue q = quit
-            move = trial.getBestMove(board)
+            moveList = trial.getBestMovesInAnArray(board)
+            move = rd.choice(moveList)
 
         # Player move now occupies board (0, 1, 2)
         board[move.x][move.y] = playertoMove
@@ -190,7 +194,7 @@ def simulateGame(p1=None, p2=None, rnd=0):
         playertoMove = 1 if playertoMove == 2 else 2
 
         # Swap AI approach
-        rand = True if rand == False else True
+        #rand = True if rand == False else True
 
     # moveList = trial.getBestMovesInAnArray(board)
     # move = rd.choice(moveList)
@@ -253,100 +257,7 @@ def gameStats(games, player=1):
     print("Loss: %d (%.1f%%)" % (stats["loss"], lossPct))
     print("Draw: %d (%.1f%%)" % (stats["draw"], drawPct))
 
-'''
-def bestMove(board):
-    combinations = []
-    playerCombinations = []
-    values = [[0 for i in range(g.width)] for j in range(g.width)]
-    playerValues = [[0 for i in range(g.width)] for j in range(g.width)]    
-    aiGuessDimensions = c.CoordinatePair(0, 0)
-    vfunc.populate(combinations, values)
-    vfunc.populate(playerCombinations, playerValues)
-    RePopulate(board, values, playerValues, combinations, playerCombinations)
-    vfunc.updateValues(board, combinations, values, True)
-    vfunc.updateValues(board, playerCombinations, playerValues, True)
 
-    curPotential = c.Value(0, 0, 0)
-    for i in range(g.width):
-        for j in range(g.width):
-      #Takes the Aggregate Potential of both player's possible moves
-            if (values[j][i].thirdPriority > -1 and playerValues[j][i].thirdPriority > -1 and (values[i][j]+playerValues[j][i]) > curPotential):
-                curPotential.firstPriority = values[j][i].firstPriority + playerValues[j][i].firstPriority
-                curPotential.secondPriority = values[j][i].secondPriority + playerValues[j][i].secondPriority
-                curPotential.thirdPriority = values[j][i].thirdPriority + playerValues[j][i].thirdPriority
-                aiGuessDimensions = c.CoordinatePair(j, i)
-
-    return aiGuessDimensions
-
-def getMove(board):
-    combinations = []
-    playerCombinations = []
-    values = [[0 for i in range(g.width)] for j in range(g.width)]
-    playerValues = [[0 for i in range(g.width)] for j in range(g.width)]    
-    aiGuessDimensions = c.CoordinatePair(0, 0)
-    vfunc.populate(combinations, values)
-    vfunc.populate(playerCombinations, playerValues)
-    RePopulate(board, values, playerValues, combinations, playerCombinations)
-    vfunc.updateValues(board, combinations, values, True)
-    vfunc.updateValues(board, playerCombinations, playerValues, True)
-
-    #Potential of Aggressive moves
-    curPotential = c.Value(0, 0, 0)
-
-    for i in range(g.width):
-        for j in range(g.width):
-        #Check to make sure spot is not taken
-            if (values[j][i].thirdPriority > -1 and values[j][i] > curPotential):
-                #If first priority is higher, OR if first priority is the same AND second
-                #priority is higher, OR if first AND second priorities are the same but THIRD
-                #priority is higher, make this the preferred move
-                curPotential = values[j][i]
-                aiGuessDimensions = c.CoordinatePair(j, i)
-
-    #Defensive moves
-    playerCurPotential = c.Value(0, 0, 0)
-
-    #updateValues(board, playerCombinations, playerValues, curPlayer);
-    for i in range(g.width):
-        for j in range(g.width):
-            if (playerValues[j][i].thirdPriority > -1 and playerValues[j][i] > playerCurPotential):
-                playerCurPotential = playerValues[j][i]
-                if (playerCurPotential > curPotential):
-                    aiGuessDimensions = c.CoordinatePair(j, i)
-
-    return aiGuessDimensions
-
-#Runs a Monty-Carlo search using the moves it finds off of getBestMovesInAnArray
-#A Little slow, but accurate
-def getMCTS_Move(board):
-    #Variables
-    combinations = []
-    playerCombinations = []
-    values = [[0 for i in range(g.width)] for j in range(g.width)]
-    playerValues = [[0 for i in range(g.width)] for j in range(g.width)]
-    #Populate
-    func.populate(combinations, values)
-    func.populate(playerCombinations, playerValues)
-    #Correct according to the current boardstate 
-    RePopulate(board, values, playerValues, combinations, playerCombinations)
-    #Update the new values
-    func.updateValues(board, combinations, values, True)
-    func.updateValues(board, playerCombinations, playerValues, True)
-
-    return MCTS.MCTS_Move(board, combinations, values, playerCombinations, playerValues, False)
-
-def RePopulate(board, values, playerValues, combinations, playerCombinations):
-    for i in range(len(board)):
-        for j in range(len(board[i])):
-            if (board[i][j]==1):
-                vfunc.removePotential(combinations, values, c.CoordinatePair(i, j))
-                values[i][j].thirdPriority = -1
-                playerValues[i][j].thirdPriority = -1
-            elif (board[i][j]==2):
-                vfunc.removePotential(playerCombinations, playerValues, c.CoordinatePair(i, j))
-                values[i][j].thirdPriority = -1
-                playerValues[i][j].thirdPriority = -1
-'''
 #run 1000 games and show their stats,
 #should be a "control" to show improvement with model
 #games = [simulateGame() for _ in range(1000)]
@@ -467,14 +378,18 @@ def highlightWin(board):
 
 #print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
+t = Timer()
+t.start()
+
 games = []
-for i in range(5000):
+for i in range(5):
     sim = simulateGame()
     print(i)
     games.append(sim)
+t.stop()
 
-with open('simulated_games.csv', mode='w') as sim_games:
-    sim_games = csv.writer(sim_games, delimiter=',', escapechar=' ', quoting=csv.QUOTE_NONE)
+with open('correctdata.csv', mode='a') as sim_games:
+    sim_games = csv.writer(sim_games, delimiter=',', escapechar=' ', quoting=csv.QUOTE_NONE, lineterminator='\n')
     for game in games:
         sim_games.writerow(game)
 

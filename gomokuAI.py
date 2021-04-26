@@ -1,4 +1,5 @@
 import random
+import re
 import tensorflow as tf
 import valueFunction as vfunc
 import Globals as g
@@ -375,23 +376,153 @@ def highlightWin(board):
         # Still more moves to make
         return -1
 
+def gameHuman(board):
+
+    currPlayer = 1
+    history = []
+    moveList = []
+    move = None
+    botOpener = True
+
+    human = int(input("Would you like to be player 1 or 2 (Enter 1 or 2):"), 3)
+
+    print(human)
+
+    while getWinner(board) == -1:
+        
+        print("in getWinner currPlayer = ", currPlayer)
+
+        if(currPlayer == human):
+            inputX = int(input("X: "), 20)
+            inputY = int(input("Y: "), 20)
+
+            board[inputX][inputY] = currPlayer
+
+            history.append([currPlayer, [inputX, inputY]])
+
+            currPlayer = 1 if currPlayer == 2 else 2
+
+            botOpener = False
+
+            printBoard(board)
+
+        else:
+            
+            if(botOpener == True):
+
+                moveList = trial.getBestMovesInAnArray(board)
+                move = rd.choice(moveList)
+
+                board[move.x][move.y] = currPlayer
+
+                history.append([currPlayer, [move.x, move.y]])
+
+                currPlayer = 1 if currPlayer == 2 else 2
+
+                botOpener = False
+
+                print("Bot opening move")
+                printBoard(board)
+
+            else:
+                move = trial.getMCTS_Move(board)
+
+                board[move.x][move.y] = currPlayer
+
+                history.append([currPlayer, [move.x, move.y]])
+
+                currPlayer = 1 if currPlayer == 2 else 2
+
+                print("bot MCTS move")
+                printBoard(board)
+
+
+def dataMagic(garbageData):
+    test_string = garbageData
+
+    testStr = test_string.replace(" ", '').replace("[", '').replace("]", '') #remove all but numbers and commas
+    testStr = testStr.split(',') #split by commas, leave only numbers
+
+    history = []
+   
+    for index, element in enumerate(testStr):
+        if index % 3 == 0:
+            history.append([int(element), [int(testStr[index + 1]), int(testStr[index + 2])]])
+
+    print(history)
+    return(history)
+
 
 #print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
-t = Timer()
-t.start()
 
+
+'''
 games = []
-for i in range(5):
+for i in range(10):
     sim = simulateGame()
     print(i)
     games.append(sim)
 t.stop()
 
-with open('correctdata.csv', mode='a') as sim_games:
+with open('testingConversion.csv', mode='a') as sim_games:
     sim_games = csv.writer(sim_games, delimiter=',', escapechar=' ', quoting=csv.QUOTE_NONE, lineterminator='\n')
     for game in games:
         sim_games.writerow(game)
+'''
+
+#board = initBoard()
+#gameHuman(board)
+
+t = Timer()
+t.start()
+
+with open('correctdata.csv', 'r') as csvfile:
+    csvtext = csvfile.readlines()
+
+myList = []
+for line in csvtext:
+    myList.append(line)
+
+
+
+totalGames = []
+
+counter = 0
+for i in myList:
+    history = dataMagic(myList[counter])
+    board = movesToBoard(history)
+    printBoard(board)
+    print(history)
+    totalGames.append(history)
+    counter += 1
+t.stop()
+print()
+print(counter)
+
+gameStats(totalGames)
+
+#print(myList[9])
+#testHistory = dataMagic(myList[9])
+
+#board = movesToBoard(testHistory)
+#printBoard(board)
+
+
+'''
+history = dataMagic(myList[2])
+print("it's working and shit")
+board = movesToBoard(history)
+printBoard(board)
+'''
+
+
+
+
+
+#for j in range(len(data[0])):
+#    print(data[0][j])
+
 
 
 # gamesNP = np.array(games)
@@ -410,8 +541,7 @@ with open('correctdata.csv', mode='a') as sim_games:
 # gameStats(games, player=2)
 
 
-# df = pd.read_csv('simulated_games.csv')
-# print(df)
+
 #now here we should write, train, test and print out the model results
 '''
 def getModel():

@@ -14,6 +14,7 @@ from keras.layers import Dense
 from keras.layers import Dropout
 from keras.backend import reshape
 from keras.utils.np_utils import to_categorical
+from keras.models import load_model
 import pandas as pd
 import numpy as np
 import csv
@@ -449,13 +450,123 @@ def dataMagic(garbageData):
         if index % 3 == 0:
             history.append([int(element), [int(testStr[index + 1]), int(testStr[index + 2])]])
 
-    print(history)
     return(history)
 
+def getModel():
+    numCells = 361
+    outcomes = 3
+    model = Sequential()
+    model.add(Dense(1020, activation='relu', input_shape=(361, )))
+    model.add(Dense(1020, activation='relu'))
+    model.add(Dense(1020, activation='relu'))
+    model.add(Dense(1020, activation='relu'))
+    model.add(Dense(1020, activation='relu'))
+    model.add(Dense(outcomes, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
+    return model
+
+def gamesToWinLossData(games):
+    X = []
+    y = []
+    for game in games:
+        winner = getWinner(movesToBoard(game))
+        for move in range(len(game)):
+            X.append(movesToBoard(game[:(move + 1)]))
+            y.append(winner)
+
+    X = np.array(X).reshape((-1, 361))
+    y = to_categorical(y)
+    
+    # Return an appropriate train/test split
+    trainNum = int(len(X) * 0.8)
+    return (X[:trainNum], X[trainNum:], y[:trainNum], y[trainNum:])
+
+def simmulateNNGame(p1=None, p2=None, rnd=0):
+    history = []
+    board = initBoard()
+    playerToMove = 1
+    temp = None
+
+
+    while getWinner(board) == -1:
+
+        #Chose a move
+        if playerToMove == 1 and p1 != None:
+            move = bestMove(board, p1, playerToMove, rnd)
+            print(playerToMove, ": [", move[0], ", ", move[1], "]")
+
+        elif playerToMove == 2 and p2 != None:
+            move = bestMove(board, p2, playerToMove, rnd)
+            print(playerToMove, ": [", move[0], ", ", move[1], "]")
+
+        else:
+            temp = trial.getBestMove(board)
+            move = (temp.x, temp.y)
+            #print(type(move))
+            #moves = getMoves(board)
+            #move = moves[random.randint(0, len(moves) - 1)]
+            print(playerToMove, ": [", move[0], ", ", move[1], "]")
+
+        # Make the move
+        board[move[0]][move[1]] = playerToMove
+
+        # Add the move to the history
+        history.append((playerToMove, move))
+
+        # Switch the active player
+        playerToMove = 1 if playerToMove == 2 else 2
+    
+    printBoard(movesToBoard(history))
+    print(history)
+    return history
 
 #print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
+def bestMove(board, model, player, rnd=0):
+    scores = []
+    moves = getMoves(board)
+    #print(moves)
 
+    for i in range(len(moves)):
+        future = np.array(board)
+        future[moves[i][0]][moves[i][1]] = player
+        prediction = model.predict(future.reshape((-1, 361)))[0]
+
+        if player == 1:
+            winPrediction = prediction[1]
+            lossPrediction = prediction[2]
+        else:
+            winPrediction = prediction[2]
+            lossPrediction = prediction[1]
+        drawPrediction = prediction[0]
+
+        #import pdb; pdb.set_trace()
+
+        if winPrediction - lossPrediction > 0:
+            scores.append(winPrediction - lossPrediction)
+        else:
+            scores.append(drawPrediction - lossPrediction)
+    #print(scores)
+    
+    # Choose the best move with a random factor
+    #bestMoves = np.flip(np.argsort(scores))
+    bestMoves = np.array(scores)
+    bestMove = np.amax(bestMoves)
+    index = np.where(bestMoves == np.amax(bestMoves))
+    #import pdb; pdb.set_trace()
+
+    
+    #for i in range(len(bestMoves)):
+        #if random.random() * rnd < 0.3:
+    #import pdb; pdb.set_trace()
+    if len(index[0]) > 1:
+        return moves[index[0][0].item()]
+
+    return moves[index[0].item()]
+    
+    
+    # Choose a move completely at random
+    return moves[random.randint(0, len(moves) - 1)]
 
 '''
 games = []
@@ -474,10 +585,12 @@ with open('testingConversion.csv', mode='a') as sim_games:
 #board = initBoard()
 #gameHuman(board)
 
+
+'''
 t = Timer()
 t.start()
 
-with open('correctdata.csv', 'r') as csvfile:
+with open('new.csv', 'r') as csvfile:
     csvtext = csvfile.readlines()
 
 myList = []
@@ -492,15 +605,30 @@ counter = 0
 for i in myList:
     history = dataMagic(myList[counter])
     board = movesToBoard(history)
-    printBoard(board)
-    print(history)
     totalGames.append(history)
     counter += 1
 t.stop()
 print()
 print(counter)
 
-gameStats(totalGames)
+
+model = getModel()
+X_train, X_test, y_train, y_test = gamesToWinLossData(totalGames)
+modelHistory = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=100, batch_size=100)
+
+# save model
+model.save('my_model100bs37.h5')
+del model
+'''
+
+# returns compiled model
+# identical to the previous one
+
+
+model = load_model('my_model.h5')
+
+games2 = [simmulateNNGame(p1=model) for _ in range(10)]
+gameStats(games2)
 
 #print(myList[9])
 #testHistory = dataMagic(myList[9])
@@ -539,44 +667,3 @@ printBoard(board)
 # gameStats(games)
 # print()
 # gameStats(games, player=2)
-
-
-
-#now here we should write, train, test and print out the model results
-'''
-def getModel():
-    numCells = 361 #because 19x19
-    outcomes = 3
-    This is how we tell the model that we want it to output an array of probabilities.
-     These probabilities project the model’s confidence in each of the three game outcomes for a given board.The three outcomes being win, draw and loss, refer to tutorial
-    model = Sequential()
-    model.add(Dense(200, activation='relu', input_shape=(361, ))) #i changed the 9 here from input shape to 361, The 200 in the dense should be replaced but I'm not sure with what number
-    #if 200 was used for a 3x3 board, I imagine it must be a lot for the 19x19 but don't go overboard, increment slowly and see results
-    model.add(Dropout(0.2)) #this is used for avoiding overfitting, could be changed to higher if the test accuracy is bad and training is very high
-    model.add(Dense(125, activation='relu'))#this is the second hdiden layer, they usually get smaller the more layers
-    model.add(Dense(75, activation='relu'))#the relu activation function is used, you can look up activation functions and experiment with others that you think might work well
-    model.add(Dropout(0.1))
-    model.add(Dense(25, activation='relu'))
-    model.add(Dense(outcomes, activation='softmax')) #normalizes the output into probabilites, the model will evaluate whether it thinks its winning, losing or drawing so far
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['acc'])
-    return model
-
-
-#check tutorial for explanation
-def gamesToWinLossData(games):
-    X = []
-    y = []
-    for game in games:
-        winner = getWinner(movesToBoard(game))
-        for move in range(len(game)):
-            X.append(movesToBoard(game[:(move + 1)]))
-            y.append(winner)
-
-    X = np.array(X).reshape((-1, 9))
-    y = to_categorical(y)
-
-    # Return an appropriate train/test split
-    trainNum = int(len(X) * 0.8)
-    return (X[:trainNum], X[trainNum:], y[:trainNum], y[trainNum:])
-'''
-'''From here on copy and paste the tutorial code and run it every time the tutorial shows output and let us know how it goes'''
